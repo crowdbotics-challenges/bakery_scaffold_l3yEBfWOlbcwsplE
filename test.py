@@ -4,8 +4,6 @@ import unittest
 
 import selenium
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver import DesiredCapabilities
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -19,7 +17,7 @@ class TestAcceptanceStripe(unittest.TestCase):
 
     def test_acceptance_stripe_public_key_has_been_set(self):
         """Check if Stripe key was defined."""
-        pattern = re.compile(r"Stripe\('pk_test_\w{24}'\);", re.I | re.M)
+        pattern = re.compile(r"Stripe\('pk_test_\w+'\);", re.I | re.M)
         res = re.search(pattern, self.dom_str)
         self.assertTrue(hasattr(res, 'group'), msg="You didn't define the Stripe key.")
 
@@ -75,23 +73,21 @@ class AssessmentTestCases(unittest.TestCase):
         with open("order.html", "r") as file_descriptor:
             self.dom_str = file_descriptor.read()
 
-        CHROMEDRIVER_PATH = os.getenv("GOOGLE_CHROME_SHIM", '/usr/local/bin/chromedriver')
+        CHROMEDRIVER_PATH = '/usr/local/bin/chromedriver'
         WINDOW_SIZE = "1920,1080"
 
         options = selenium.webdriver.ChromeOptions()
         options.headless = True
+        options.binary_location = '/usr/lib/chromium'
         options.add_argument("--window-size=%s" % WINDOW_SIZE)
         options.add_argument("--disable-gpu")
 
         self.driver = webdriver.Chrome(
-            executable_path=CHROMEDRIVER_PATH,
-            options=options
+            executable_path=CHROMEDRIVER_PATH, options=options
         )
 
     def _get_button_id(self):
-        pattern = re.compile(
-            r"\('checkout-button-sku_\w{14}'\);", re.I | re.M
-        )
+        pattern = re.compile(r"\('checkout-button-sku_\w{14}'\);", re.I | re.M)
         res = re.search(pattern, self.dom_str)
         return res.group().split("'")[1]
 
@@ -108,7 +104,7 @@ class AssessmentTestCases(unittest.TestCase):
         self.driver.get(self._get_url())
         wait = WebDriverWait(self.driver, 20)
 
-        elem = self.driver.find_element_by_id(self._get_button_id())
+        elem = wait.until(EC.presence_of_element_located((By.ID, self._get_button_id())))
         elem.click()
 
         email_elem = wait.until(EC.presence_of_element_located((By.ID, "email")))
@@ -142,18 +138,20 @@ class AssessmentTestCases(unittest.TestCase):
         self.assertIn("order_success.html", self.driver.current_url)
         self.assertTrue(session_id_elem.text)
 
-    # def test_assessment_check_for_most_recent_purchase(self):
-    #     import stripe
-    #     stripe.api_key = os.environ.get('STRIPE_TEST_SECRET_KEY')
-    #     charges = stripe.Charge.list(limit=3)
-    #     most_recent = list(charges)[-1]
-    #
-    #     self.assertTrue(most_recent.paid)
-    #     self.assertEqual(most_recent.status, "succeeded")
-
     def tearDown(self):
         self.driver.close()
-        
- 
-if __name__ == '__main__':
+
+
+    
+
+class TestSubmission(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(TestSubmission, self).__init__(*args, **kwargs)
+        with open('order.html', 'r') as file_descriptor:
+            self.dom_str = file_descriptor.read()
+
+    
+
+
+if __name__ == "__main__":
     unittest.main()
